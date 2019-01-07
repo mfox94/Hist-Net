@@ -44,6 +44,9 @@ import time as time
 
 # Local paths..
 PATH_INPUT = "../Preprocessed_Data/"
+epochs = 10
+batch_size=32
+
 
 
 def printAcc(history):
@@ -64,7 +67,6 @@ def ApplyFilter(images, filter):
     if filter == 'ROBERTS':
         images = Applysobel(images)
     return images
-
 
 
 def Applysobel(images):
@@ -147,14 +149,27 @@ def Hist_Net_Initialize(Images_Train, Images_test, y_trainHot, y_testHot, n_chan
     input_shape = (img_rows, img_cols, n_channel)
     strides = 2
     model, datagen = Hist_Net(num_classes, input_shape, strides)
+    return model, datagen
+
+
+def fit_CNN(Images_Train, Images_test, y_trainHot, y_testHot, model, datagen):
+    a = Images_Train
+    b = y_trainHot
+    c = Images_test
+    d = y_testHot
+    exec_model = model.fit_generator(datagen.flow(a, b, batch_size=batch_size),
+                                     steps_per_epoch=len(a) / batch_size,
+                                     epochs=epochs, validation_data=[c, d])
+    return exec_model
 
 
 def main():
     print("Initialization")
-    Images_Train, Images_test, y_trainHot, y_testHot = initialize()
+    Images_Train, Images_Test, Labels_Train, Labels_Test = initialize()
     num_channels = Images_Train.shape[3]  # check the channels of each image
-    Hist_Net_Initialize(Images_Train, Images_test, y_trainHot, y_testHot, num_channels)
-
+    model, datagen = Hist_Net_Initialize(Images_Train, Images_Test, Labels_Train, Labels_Test, num_channels)
+    model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
+    printAcc(model)
     print("COMPLETE!_______________")
 
 
