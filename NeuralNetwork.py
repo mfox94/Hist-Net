@@ -58,13 +58,13 @@ def printAcc(history):
 
 def ApplyFilter(images, filter):
     if filter == 'GREY':
-        Applygrey(images)
+        images = Applygrey(images)
     if filter == 'SOBEL':
-        Applysobel(images)
+        images = Applysobel(images)
     if filter == 'ROBERTS':
-        Applysobel(images)
-    if filter != 'GREY' | filter != 'GREY' | filter != 'GREY':
-        print("ERROR: unrecognized filter")
+        images = Applysobel(images)
+    return images
+
 
 
 def Applysobel(images):
