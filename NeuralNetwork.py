@@ -1,4 +1,3 @@
-
 import numpy as np
 
 import matplotlib.pylab as plt
@@ -20,7 +19,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization
 from keras.utils.np_utils import to_categorical
 
 # Colab paths...
-PATH_INPUT="gdrive/My Drive/Colab Notebooks/"
+PATH_INPUT = "gdrive/My Drive/Colab Notebooks/"
 
 # Local paths..
 
@@ -77,26 +76,24 @@ def Applyroberts(images):
     return images_temp
 
 
-def initialize():
-    print("loading images...")
-    images = np.load(PATH_INPUT + 'images.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
-                     encoding='ASCII')
-    print("loading labels...")
-    labels = np.load(PATH_INPUT + 'labels.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
-                     encoding='ASCII')
-    print("splitting..")
-    Images_Train, Images_test, Labels_Train, Labels_Test = train_test_split(images, labels, test_size=0.2)
-    print("to categorical Train")
-    y_trainHot = to_categorical(Labels_Train, num_classes=2)
-    print("to categorical Test")
-    y_testHot = to_categorical(Labels_Test, num_classes=2)
-    print("splitting completed!")
-    return Images_Train, Images_test, y_trainHot, y_testHot
-    del images
-    del labels
+#
+# def initialize():
+#     print("splitting..")
+#     Images_Train, Images_test, Labels_Train, Labels_Test = train_test_split(images, labels, test_size=0.2)
+#     print("to categorical Train")
+#     y_trainHot = to_categorical(Labels_Train, num_classes=2)
+#     print("to categorical Test")
+#     y_testHot = to_categorical(Labels_Test, num_classes=2)
+#     print("splitting completed!")
+#     return Images_Train, Images_test, y_trainHot, y_testHot
+#     del images
+#     del labels
 
 
-def Baseline_Net(num_classes, input_shape, strides):
+def Baseline_Net():
+    num_classes = 2
+    input_shape = (50, 50)
+    strides = 2
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3),
                      activation='relu',
@@ -121,6 +118,9 @@ def Baseline_Net(num_classes, input_shape, strides):
 
 
 def Hist_Net(num_classes, input_shape, strides):
+    num_classes = 2
+    input_shape = (50, 50)
+    strides = 2
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3),
                      activation='relu',
@@ -147,21 +147,6 @@ def Hist_Net(num_classes, input_shape, strides):
     return model, datagen
 
 
-def Hist_Net_Initialize(Images_Train, Images_test, y_trainHot, y_testHot, n_channel, cnn):
-    num_classes = 2
-    img_rows, img_cols = 50, 50
-    input_shape = (img_rows, img_cols, n_channel)
-    strides = 2
-
-    if cnn == 0:
-        print("Training baseline net..")
-        model, datagen = Baseline_Net(num_classes, input_shape, strides)
-    if cnn == 1:
-        print("Training Hist-Net..")
-        model, datagen = Hist_Net(num_classes, input_shape, strides)
-    return model, datagen
-
-
 def fit_CNN(Images_Train, Images_test, y_trainHot, y_testHot, model, datagen):
     a = Images_Train
     b = y_trainHot
@@ -172,25 +157,36 @@ def fit_CNN(Images_Train, Images_test, y_trainHot, y_testHot, model, datagen):
                                      epochs=epochs, validation_data=[c, d])
     return exec_model
 
+
 def statistics(a, b):
     print('Total number of images: {}'.format(len(a)))
     print('Number of Negative Images: {}'.format(np.sum(b == 0)))
     print('Number of Positive Images: {}'.format(np.sum(b == 1)))
     print('Percentage of positive images: {:.2f}%'.format(100 * np.mean(b)))
     print('Image shape (Width, Height, Channels): {}'.format(a[0].shape))
-def Train_Cnn(cnn):
+
+
+def Train_Cnn(cnn, filter):
     print("Initialize training")
-    Images_Train, Images_Test, Labels_Train, Labels_Test = initialize()
-    try:
-        num_channels = Images_Train.shape[3]  # check the channels of each image
-    except:
-        num_channels=1
-    if cnn != 0 and cnn != 1:
-        print("Please, select a valid cnn, 0 or 1")
-    else:
-        model, datagen = Hist_Net_Initialize(Images_Train, Images_Test, Labels_Train, Labels_Test, num_channels, cnn)
-        model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
-        printAcc(model)
+    images = np.load(PATH_INPUT + 'images.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
+                     encoding='ASCII')
+    labels = np.load(PATH_INPUT + 'labels.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
+                     encoding='ASCII')
+    n_folds = 5
+    skf = StratifiedKFold(labels, n_folds=n_folds, shuffle=True)
+    for i, (train, test) in enumerate(skf):
+        print("Running Fold" + (i + 1) + "/" + n_folds)
+        # CREATE MODEL
+
+        model = None
+        if cnn == 'B':
+            model = Baseline_Net()
+        if cnn == 'H':
+            model = Hist_Net()
+
+    # model, datagen = Hist_Net_Initialize(Images_Train, Images_Test, Labels_Train, Labels_Test, num_channels, cnn)
+    # model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
+    # printAcc(model)
 
     print("COMPLETE!_______________")
     outfile = open(PATH_INPUT + 'baseline_sobel.dat', 'wb')
