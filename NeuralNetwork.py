@@ -1,52 +1,32 @@
-import pandas as pd
+
 import numpy as np
-import os
-from glob import glob
-import itertools
-import fnmatch
-import random
+
 import matplotlib.pylab as plt
-import seaborn as sns
-import cv2
-from scipy.misc import imresize, imread
-import sklearn
+
 from skimage import color
-from sklearn import model_selection
+
 from sklearn.model_selection import train_test_split, KFold, cross_val_score, StratifiedKFold, learning_curve, \
     GridSearchCV
-from sklearn.metrics import confusion_matrix, make_scorer, accuracy_score
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC, LinearSVC
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+
 import keras
-from sklearn import datasets, svm, metrics
+
 from skimage import filters
-from keras import backend as K
-from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+import pickle
 from keras.preprocessing.image import ImageDataGenerator
-from keras.utils.np_utils import to_categorical
 from keras.models import Sequential, model_from_json
-from keras.optimizers import SGD, RMSprop, Adam, Adagrad, Adadelta
 from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization, Conv2D, MaxPool2D, MaxPooling2D, \
     AveragePooling2D
-from os import listdir
-import gc
-import time as time
+
 from keras.utils.np_utils import to_categorical
-import time as time
 
 # Colab paths...
-#  PATH_INPUT = "../Data/"
+PATH_INPUT="gdrive/My Drive/Colab Notebooks/"
 
 # Local paths..
+
 PATH_INPUT = "../Preprocessed_Data/"
 epochs = 10
-batch_size=32
-
+batch_size = 32
 
 
 def printAcc(history):
@@ -116,6 +96,30 @@ def initialize():
     del labels
 
 
+def Baseline_Net(num_classes, input_shape, strides):
+    model = Sequential()
+    model.add(Conv2D(32, kernel_size=(3, 3),
+                     activation='relu',
+                     input_shape=input_shape, strides=strides))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.25))
+    model.add(Flatten())
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes, activation='softmax'))
+    model.compile(loss=keras.losses.categorical_crossentropy,
+                  optimizer=keras.optimizers.Adadelta(),
+                  metrics=['accuracy'])
+    datagen = ImageDataGenerator(
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        horizontal_flip=True,
+        vertical_flip=True)
+    return model, datagen
+
+
 def Hist_Net(num_classes, input_shape, strides):
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3),
@@ -135,20 +139,26 @@ def Hist_Net(num_classes, input_shape, strides):
                   optimizer=keras.optimizers.Adadelta(),
                   metrics=['accuracy'])
     datagen = ImageDataGenerator(
-        rotation_range=50,  # randomly rotate images in the range (degrees, 0 to 180)
-        width_shift_range=0.3,  # randomly shift images horizontally (fraction of total width)
-        height_shift_range=0.3,  # randomly shift images vertically (fraction of total height)
-        horizontal_flip=True,  # randomly flip images
-        vertical_flip=True)  # randomly flip images
+        rotation_range=50,
+        width_shift_range=0.3,
+        height_shift_range=0.3,
+        horizontal_flip=True,
+        vertical_flip=True)
     return model, datagen
 
 
-def Hist_Net_Initialize(Images_Train, Images_test, y_trainHot, y_testHot, n_channel):
+def Hist_Net_Initialize(Images_Train, Images_test, y_trainHot, y_testHot, n_channel, cnn):
     num_classes = 2
     img_rows, img_cols = 50, 50
     input_shape = (img_rows, img_cols, n_channel)
     strides = 2
-    model, datagen = Hist_Net(num_classes, input_shape, strides)
+
+    if cnn == 0:
+        print("Training baseline net..")
+        model, datagen = Baseline_Net(num_classes, input_shape, strides)
+    if cnn == 1:
+        print("Training Hist-Net..")
+        model, datagen = Hist_Net(num_classes, input_shape, strides)
     return model, datagen
 
 
@@ -162,71 +172,31 @@ def fit_CNN(Images_Train, Images_test, y_trainHot, y_testHot, model, datagen):
                                      epochs=epochs, validation_data=[c, d])
     return exec_model
 
-
-def main():
-    print("Initialization")
+def statistics(a, b):
+    print('Total number of images: {}'.format(len(a)))
+    print('Number of Negative Images: {}'.format(np.sum(b == 0)))
+    print('Number of Positive Images: {}'.format(np.sum(b == 1)))
+    print('Percentage of positive images: {:.2f}%'.format(100 * np.mean(b)))
+    print('Image shape (Width, Height, Channels): {}'.format(a[0].shape))
+def Train_Cnn(cnn):
+    print("Initialize training")
     Images_Train, Images_Test, Labels_Train, Labels_Test = initialize()
-    num_channels = Images_Train.shape[3]  # check the channels of each image
-    model, datagen = Hist_Net_Initialize(Images_Train, Images_Test, Labels_Train, Labels_Test, num_channels)
-    model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
-    printAcc(model)
+    try:
+        num_channels = Images_Train.shape[3]  # check the channels of each image
+    except:
+        num_channels=1
+    if cnn != 0 and cnn != 1:
+        print("Please, select a valid cnn, 0 or 1")
+    else:
+        model, datagen = Hist_Net_Initialize(Images_Train, Images_Test, Labels_Train, Labels_Test, num_channels, cnn)
+        model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
+        printAcc(model)
+
     print("COMPLETE!_______________")
+    outfile = open(PATH_INPUT + 'baseline_sobel.dat', 'wb')
+    pickle.dump(model, outfile)
+    outfile.close()
 
-
-# print("MODEL HISTNET:")
-# batch_size = 1024
-# num_classes = 2
-# epochs = 8
-# img_rows,img_cols=50,50
-# input_shape = (img_rows, img_cols, 3)
-# #input_shape = (img_rows, img_cols, 1)
-# e = 2
-#
-#
-# model = Sequential()
-# model.add(Conv2D(32, kernel_size=(3, 3),
-#                  activation='relu',
-#                  input_shape=input_shape,strides=e))
-# model.add(Conv2D(64, (3, 3), activation='relu'))
-# model.add(Conv2D(128, (5, 5), activation='relu'))
-# model.add(Dropout(0.5))
-# model.add(Conv2D(128, (3, 3), activation='relu'))
-# model.add(AveragePooling2D(pool_size=(2, 2)))
-# model.add(Dropout(0.5))
-# model.add(Flatten())
-# model.add(Dense(128, activation='relu'))
-# model.add(Dropout(0.5))
-# model.add(Dense(num_classes, activation='softmax'))
-# model.compile(loss=keras.losses.categorical_crossentropy,
-#               optimizer=keras.optimizers.Adadelta(),
-#               metrics=['accuracy'])
-#
-# a = Images_Train
-# #a = Images_Train.reshape(Images_Train.shape[0], 50, 50, 1)
-# b = y_trainHot
-# c = Images_test
-# #c = Images_test.reshape(Images_test.shape[0], 50, 50, 1)
-# d = y_testHot
-# epochs = 10
-#
-# print("Model 1 compiled!")
-# time1= time.time()
-#
-# datagen = ImageDataGenerator(
-#         rotation_range=50,  # randomly rotate images in the range (degrees, 0 to 180)
-#         width_shift_range=0.3,  # randomly shift images horizontally (fraction of total width)
-#         height_shift_range=0.3,  # randomly shift images vertically (fraction of total height)
-#         horizontal_flip=True,  # randomly flip images
-#         vertical_flip=True)  # randomly flip images
-#
-#
-# exec_model = model.fit_generator(datagen.flow(a,b, batch_size=16),
-#                         steps_per_epoch=len(a) / 16,
-#                               epochs=epochs,validation_data = [c, d])
-#
-# print("execution succeded in ")
-# print(time.time()-time1)
-# printAcc(exec_model)
 
 if __name__ == '__main__':
-    main()
+    Train_Cnn(0)

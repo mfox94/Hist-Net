@@ -1,36 +1,12 @@
 import pandas as pd
 import numpy as np
-import os
+
 from glob import glob
-import itertools
+
 import fnmatch
-import random
-import matplotlib.pylab as plt
-import seaborn as sns
+
 import cv2
-from scipy.misc import imresize, imread
-import sklearn
-from sklearn import model_selection
-from sklearn.model_selection import train_test_split, KFold, cross_val_score, StratifiedKFold, learning_curve, \
-    GridSearchCV
-from sklearn.metrics import confusion_matrix, make_scorer, accuracy_score
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC, LinearSVC
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-import keras
-from keras import backend as K
-from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
-from keras.preprocessing.image import ImageDataGenerator
-from keras.utils.np_utils import to_categorical
-from keras.models import Sequential, model_from_json
-from keras.optimizers import SGD, RMSprop, Adam, Adagrad, Adadelta
-from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization, Conv2D, MaxPool2D, MaxPooling2D
-from os import listdir
-import gc
+
 import time as time
 
 
