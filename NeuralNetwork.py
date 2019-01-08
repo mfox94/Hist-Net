@@ -172,19 +172,30 @@ def Train_Cnn(cnn, filter):
                      encoding='ASCII')
     labels = np.load(PATH_INPUT + 'labels.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
                      encoding='ASCII')
+    if filter == 'N':
+        images = images
+    if filter == 'G':
+        images = Applygrey(images)
+    if filter == 'S':
+        images = Applysobel(images)
+
     n_folds = 5
-    skf = StratifiedKFold(labels, n_folds=n_folds, shuffle=True)
+    skf = StratifiedKFold(n_folds=5, shuffle=True)
+    skf.get_n_splits(images, labels)
     for i, (train, test) in enumerate(skf):
         print("Running Fold" + (i + 1) + "/" + n_folds)
+
         # CREATE MODEL
+        Images_Train, Images_Test = images[train], images[test]
+        Labels_Train, Labels_Test = labels[train], labels[test]
 
-        model = None
+        model, datagen = None
         if cnn == 'B':
-            model = Baseline_Net()
+            model, datagen = Baseline_Net()
         if cnn == 'H':
-            model = Hist_Net()
+            model, datagen = Hist_Net()
 
-    # model, datagen = Hist_Net_Initialize(Images_Train, Images_Test, Labels_Train, Labels_Test, num_channels, cnn)
+
     # model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
     # printAcc(model)
 
@@ -195,4 +206,4 @@ def Train_Cnn(cnn, filter):
 
 
 if __name__ == '__main__':
-    Train_Cnn(0)
+    Train_Cnn(0,'N')
