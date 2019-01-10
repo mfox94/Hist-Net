@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 from glob import glob
-
+from sklearn.model_selection import train_test_split
 import fnmatch
 
 import cv2
@@ -72,7 +72,11 @@ statistics(X2, Y2)
 X = np.array(X)
 X = X / 255.0
 
-np.save(PATH_OUTPUT+'images', X, allow_pickle=True, fix_imports=True)
-np.save(PATH_OUTPUT+'labels', Y, allow_pickle=True, fix_imports=True)
+# validation data
+_, _, Xval, Yval = train_test_split(X, Y, test_size=.1)
+np.save(PATH_OUTPUT + 'images_val', Xval, allow_pickle=True, fix_imports=True)
+np.save(PATH_OUTPUT + 'labels_val', Yval, allow_pickle=True, fix_imports=True)
+# np.save(PATH_OUTPUT + 'images', X, allow_pickle=True, fix_imports=True)
+# np.save(PATH_OUTPUT + 'labels', Y, allow_pickle=True, fix_imports=True)
 print('elapsed')
 print(round(time.time() - start))

@@ -6,8 +6,9 @@ from PIL import Image, ImageTk
 from tkinter import Tk, BOTH
 from tkinter.ttk import Frame, Label, Style
 from tkinter.filedialog import askopenfilename
+import NeuralNetwork as NN
 
-
+MODEL_PATH='../Models/'
 class GUI(Frame):
 
     def __init__(self):
@@ -37,7 +38,7 @@ class GUI(Frame):
         R3 = Radiobutton(self, text="NO FILTER", value=0, var=Filter_Choice, pady=10, background="blue").pack(fill=X)
         R4 = Radiobutton(self, text="GREYSCALE", value=1, var=Filter_Choice, pady=10, background="blue").pack(fill=X)
         R5 = Radiobutton(self, text="SOBEL", value=2, var=Filter_Choice, pady=10, background="blue").pack(fill=X)
-        Label_Gold=Label(self,text="GOLD").pack()
+        Label_Gold = Label(self, text="GOLD").pack()
         filename = askopenfilename(filetypes=[("Images", "*.png")], initialdir="../Data")
         load_image(self, filename)
         load_button(self)
@@ -49,21 +50,27 @@ def load_image(self, filename):
     image = ImageTk.PhotoImage(image)
     label1 = Label(self, image=image)
     label1.image = image
-    label1.pack(fill=X,side=LEFT)
+    label1.pack(fill=X, side=LEFT)
+
 
 def predict():
     print("ciao")
 
+
 def load_button(self):
-    okButton = Button(self, text="EVALUATE", width=500, height=8,command = predict)
+    okButton = Button(self, text="EVALUATE", width=500, height=8, command=predict)
     okButton.pack(side=LEFT)
 
 
+def load_model(cnn, filter):
+    if cnn=='B' and filter=='N':
+        input_shape = (50, 50, 3)
+        model,_ = NN.Baseline_Net()
+        model.load_weights(MODEL_PATH+'BaseLine_Nofilter')
+        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 print("GUI")
 root = Tk()
 root.geometry("500x500+300+300")
 app = GUI()
 root.mainloop()
-
-

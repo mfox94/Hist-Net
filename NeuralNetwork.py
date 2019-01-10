@@ -1,31 +1,32 @@
 import numpy as np
-
 import matplotlib.pylab as plt
-
 from skimage import color
-
 from sklearn.model_selection import train_test_split, KFold, cross_val_score, StratifiedKFold, learning_curve, \
     GridSearchCV
-
 import keras
-
 from skimage import filters
 import pickle
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization, Conv2D, MaxPool2D, MaxPooling2D, \
     AveragePooling2D
-
+import gc
 from keras.utils.np_utils import to_categorical
-
-# Colab paths...
-PATH_INPUT = "gdrive/My Drive/Colab Notebooks/"
-
-# Local paths..
+from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 
 PATH_INPUT = "../Preprocessed_Data/"
+#PATH_INPUT="gdrive/My Drive/Colab Notebooks/"
 epochs = 10
 batch_size = 32
+
+
+
+
+
+def on_epoch_end(self, epoch, logs=None):
+    for k, v in logs.items():
+        self.history.setdefault(k, []).append(v)
+    np.save(self.savepath, self.history)
 
 
 def printAcc(history):
@@ -90,9 +91,9 @@ def Applyroberts(images):
 #     del labels
 
 
-def Baseline_Net():
+def Baseline_Net(input_shape):
     num_classes = 2
-    input_shape = (50, 50)
+
     strides = 2
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3),
@@ -159,51 +160,59 @@ def fit_CNN(Images_Train, Images_test, y_trainHot, y_testHot, model, datagen):
 
 
 def statistics(a, b):
-    print('Total number of images: {}'.format(len(a)))
-    print('Number of Negative Images: {}'.format(np.sum(b == 0)))
-    print('Number of Positive Images: {}'.format(np.sum(b == 1)))
     print('Percentage of positive images: {:.2f}%'.format(100 * np.mean(b)))
-    print('Image shape (Width, Height, Channels): {}'.format(a[0].shape))
 
 
-def Train_Cnn(cnn, filter):
-    print("Initialize training")
-    images = np.load(PATH_INPUT + 'images.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
-                     encoding='ASCII')
-    labels = np.load(PATH_INPUT + 'labels.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
-                     encoding='ASCII')
-    if filter == 'N':
-        images = images
-    if filter == 'G':
-        images = Applygrey(images)
-    if filter == 'S':
-        images = Applysobel(images)
 
-    n_folds = 5
-    skf = StratifiedKFold(n_folds=5, shuffle=True)
-    skf.get_n_splits(images, labels)
-    for i, (train, test) in enumerate(skf):
-        print("Running Fold" + (i + 1) + "/" + n_folds)
+cnn = 'B'
+filter = 'N'
+print("Initialize training")
+print("\tLoading images")
+images = np.load(PATH_INPUT + 'images.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
+                 encoding='ASCII')
+print("\tLoading labels")
+labels = np.load(PATH_INPUT + 'labels.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
+                 encoding='ASCII')
+print("\tSplitting 80%/20%")
+Images_Train, Images_Test, Labels_Train, Labels_Test = train_test_split(images, labels, test_size=0.2,stratify=labels)
+Labels_Train = to_categorical(Labels_Train, num_classes=2)
+Labels_Test = to_categorical(Labels_Test, num_classes=2)
+statistics(Images_Train,Labels_Train)
 
-        # CREATE MODEL
-        Images_Train, Images_Test = images[train], images[test]
-        Labels_Train, Labels_Test = labels[train], labels[test]
+del images
+del labels
+gc.collect()
 
-        model, datagen = None
-        if cnn == 'B':
-            model, datagen = Baseline_Net()
-        if cnn == 'H':
-            model, datagen = Hist_Net()
+np.save('images_val', Images_Test, allow_pickle=True, fix_imports=True)
+np.save('labels_val', Labels_Test, allow_pickle=True, fix_imports=True)
+
+print('Applying the selected filter')
+input_shape=(50,50,3)
+if filter == 'N':
+    Images_Train = Images_Train
+    input_shape=(50,50,3)
+if filter == 'G':
+    Images_Train = Applygrey(Images_Train)
+    Images_Test = Applygrey(Images_Test)
+    input_shape=(50,50,1)
+if filter == 'S':
+    Images_Train = Applysobel(Images_Train)
+    Images_Test = Applysobel(Images_Test)
+    input_shape=(50,50,1)
 
 
-    # model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
-    # printAcc(model)
+print('Compiling the selected CNN')
+model, datagen = None, None
+if cnn == 'B':
+    model, datagen = Baseline_Net(input_shape)
+if cnn == 'H':
+    model, datagen = Hist_Net(input_shape)
 
-    print("COMPLETE!_______________")
-    outfile = open(PATH_INPUT + 'baseline_sobel.dat', 'wb')
-    pickle.dump(model, outfile)
-    outfile.close()
+print('Fitting the selected CNN')
+model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
+printAcc(model)
 
-
-if __name__ == '__main__':
-    Train_Cnn(0,'N')
+print("COMPLETE!_______________")
+outfile = open('baseline_sobel.dat', 'wb')
+pickle.dump(model, outfile)
+outfile.close()
