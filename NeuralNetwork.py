@@ -10,23 +10,14 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization, Conv2D, MaxPool2D, MaxPooling2D, \
     AveragePooling2D
-import gc
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+import gc
 
 PATH_INPUT = "../Preprocessed_Data/"
-#PATH_INPUT="gdrive/My Drive/Colab Notebooks/"
+#PATH_INPUT = "gdrive/My Drive/"
 epochs = 10
 batch_size = 32
-
-
-
-
-
-def on_epoch_end(self, epoch, logs=None):
-    for k, v in logs.items():
-        self.history.setdefault(k, []).append(v)
-    np.save(self.savepath, self.history)
 
 
 def printAcc(history):
@@ -50,7 +41,7 @@ def ApplyFilter(images, filter):
 
 
 def Applysobel(images):
-    images_temp = np.ndarray(shape=(90000, 50, 50))
+    images_temp = np.ndarray(shape=(len(images), 50, 50))
     for i in range(images.shape[0]):
         curr_im = images[i].astype('uint8')
         curr_im = filters.sobel(color.rgb2gray(images[i]))
@@ -59,7 +50,7 @@ def Applysobel(images):
 
 
 def Applygrey(images):
-    images_temp = np.ndarray(shape=(90000, 50, 50))
+    images_temp = np.ndarray(shape=(len(images), 50, 50))
     for i in range(images.shape[0]):
         curr_im = images[i].astype('uint8')
         curr_im = color.rgb2gray(images[i])
@@ -68,7 +59,7 @@ def Applygrey(images):
 
 
 def Applyroberts(images):
-    images_temp = np.ndarray(shape=(90000, 50, 50))
+    images_temp = np.ndarray(shape=(len(images), 50, 50))
     for i in range(images.shape[0]):
         curr_im = images[i].astype('uint8')
 
@@ -77,23 +68,8 @@ def Applyroberts(images):
     return images_temp
 
 
-#
-# def initialize():
-#     print("splitting..")
-#     Images_Train, Images_test, Labels_Train, Labels_Test = train_test_split(images, labels, test_size=0.2)
-#     print("to categorical Train")
-#     y_trainHot = to_categorical(Labels_Train, num_classes=2)
-#     print("to categorical Test")
-#     y_testHot = to_categorical(Labels_Test, num_classes=2)
-#     print("splitting completed!")
-#     return Images_Train, Images_test, y_trainHot, y_testHot
-#     del images
-#     del labels
-
-
 def Baseline_Net(input_shape):
     num_classes = 2
-
     strides = 2
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3),
@@ -114,13 +90,13 @@ def Baseline_Net(input_shape):
         width_shift_range=0.2,
         height_shift_range=0.2,
         horizontal_flip=True,
-        vertical_flip=True)
+        vertical_flip=True
+    )
     return model, datagen
 
 
-def Hist_Net(num_classes, input_shape, strides):
+def Hist_Net(input_shape):
     num_classes = 2
-    input_shape = (50, 50)
     strides = 2
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3),
@@ -148,71 +124,80 @@ def Hist_Net(num_classes, input_shape, strides):
     return model, datagen
 
 
-def fit_CNN(Images_Train, Images_test, y_trainHot, y_testHot, model, datagen):
-    a = Images_Train
-    b = y_trainHot
-    c = Images_test
-    d = y_testHot
-    exec_model = model.fit_generator(datagen.flow(a, b, batch_size=batch_size),
-                                     steps_per_epoch=len(a) / batch_size,
-                                     epochs=epochs, validation_data=[c, d])
+def fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen, callbacks_list, input_shape):
+    Images_Train = Images_Train.reshape(len(Images_Train), input_shape[0], input_shape[1], input_shape[2])
+    Images_Test = Images_Test.reshape(len(Images_Test), input_shape[0], input_shape[1], input_shape[2])
+
+    exec_model = model.fit_generator(datagen.flow(Images_Train, Labels_Train, batch_size=batch_size),
+                                     steps_per_epoch=len(Images_Train) / batch_size,
+                                     epochs=epochs, validation_data=[Images_Test, Labels_Test],
+                                     callbacks=callbacks_list
+                                     )
     return exec_model
 
 
 def statistics(a, b):
+    print('Total number of images: {}'.format(len(a)))
+    print('Number of IDC(-) Images: {}'.format(np.sum(b == 0)))
+    print('Number of IDC(+) Images: {}'.format(np.sum(b == 1)))
     print('Percentage of positive images: {:.2f}%'.format(100 * np.mean(b)))
+    print('Image shape (Width, Height, Channels): {}'.format(a[0].shape))
 
+def Train_CNN(cnn,filter,iteration):
+    for i in range(iteration):
+        print('ITERATION {}'.format(i + 1))
 
+        print("Initialize training")
+        print("\tLoading images")
+        images = np.load(PATH_INPUT + 'images.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
+                         encoding='ASCII')
+        print("\tLoading labels")
+        labels = np.load(PATH_INPUT + 'labels.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
+                         encoding='ASCII')
+        print("\tSplitting 80%/20%")
+        Images_Train, Images_Test, Labels_Train, Labels_Test = train_test_split(images, labels, test_size=0.2,
+                                                                                random_state=42, stratify=labels)
+        statistics(Images_Train, Labels_Train)
+        Labels_Train = to_categorical(Labels_Train, num_classes=2)
+        Labels_Test = to_categorical(Labels_Test, num_classes=2)
 
-cnn = 'B'
-filter = 'N'
-print("Initialize training")
-print("\tLoading images")
-images = np.load(PATH_INPUT + 'images.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
-                 encoding='ASCII')
-print("\tLoading labels")
-labels = np.load(PATH_INPUT + 'labels.npy', mmap_mode=None, allow_pickle=True, fix_imports=True,
-                 encoding='ASCII')
-print("\tSplitting 80%/20%")
-Images_Train, Images_Test, Labels_Train, Labels_Test = train_test_split(images, labels, test_size=0.2,stratify=labels)
-Labels_Train = to_categorical(Labels_Train, num_classes=2)
-Labels_Test = to_categorical(Labels_Test, num_classes=2)
-statistics(Images_Train,Labels_Train)
+        del images
+        del labels
 
-del images
-del labels
-gc.collect()
+        print('Applying the selected filter')
+        input_shape = (50, 50, 3)
+        if filter == 'N':
+            Images_Train = Images_Train
+            input_shape = (50, 50, 3)
+        if filter == 'G':
+            Images_Train = Applygrey(Images_Train)
+            Images_Test = Applygrey(Images_Test)
+            input_shape = (50, 50, 1)
+        if filter == 'S':
+            Images_Train = Applysobel(Images_Train)
+            Images_Test = Applysobel(Images_Test)
+            input_shape = (50, 50, 1)
 
-np.save('images_val', Images_Test, allow_pickle=True, fix_imports=True)
-np.save('labels_val', Labels_Test, allow_pickle=True, fix_imports=True)
+        print('Compiling the selected CNN')
+        model, datagen = None, None
+        if cnn == 'B':
+            model, datagen = Baseline_Net(input_shape)
+        if cnn == 'H':
+            model, datagen = Hist_Net(input_shape)
 
-print('Applying the selected filter')
-input_shape=(50,50,3)
-if filter == 'N':
-    Images_Train = Images_Train
-    input_shape=(50,50,3)
-if filter == 'G':
-    Images_Train = Applygrey(Images_Train)
-    Images_Test = Applygrey(Images_Test)
-    input_shape=(50,50,1)
-if filter == 'S':
-    Images_Train = Applysobel(Images_Train)
-    Images_Test = Applysobel(Images_Test)
-    input_shape=(50,50,1)
+        checkpoint = ModelCheckpoint('Model'+cnn+'_'+filter+'.h5', monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+        callbacks_list = [checkpoint]
+        print('Fitting the selected CNN')
+        model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen, callbacks_list, input_shape)
+        printAcc(model)
+        del Images_Train
+        del Images_Test
+        del Labels_Train
+        del Labels_Test
+        del model
+        del datagen
+        del callbacks_list
+        gc.collect()
+        print("COMPLETE!_______________")
 
-
-print('Compiling the selected CNN')
-model, datagen = None, None
-if cnn == 'B':
-    model, datagen = Baseline_Net(input_shape)
-if cnn == 'H':
-    model, datagen = Hist_Net(input_shape)
-
-print('Fitting the selected CNN')
-model = fit_CNN(Images_Train, Images_Test, Labels_Train, Labels_Test, model, datagen)
-printAcc(model)
-
-print("COMPLETE!_______________")
-outfile = open('baseline_sobel.dat', 'wb')
-pickle.dump(model, outfile)
-outfile.close()
+Train_CNN('B','N',3)
