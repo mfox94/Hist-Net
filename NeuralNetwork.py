@@ -17,7 +17,8 @@ import gc
 PATH_INPUT = "../Preprocessed_Data/"
 #PATH_INPUT = "gdrive/My Drive/"
 epochs = 10
-batch_size = 128
+batch_size = 32
+
 
 
 def printAcc(history):
