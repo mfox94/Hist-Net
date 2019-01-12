@@ -17,7 +17,7 @@ import gc
 PATH_INPUT = "../Preprocessed_Data/"
 #PATH_INPUT = "gdrive/My Drive/"
 epochs = 10
-batch_size = 32
+batch_size = 128
 
 
 def printAcc(history):
@@ -156,7 +156,7 @@ def Train_CNN(cnn,filter,iteration):
                          encoding='ASCII')
         print("\tSplitting 80%/20%")
         Images_Train, Images_Test, Labels_Train, Labels_Test = train_test_split(images, labels, test_size=0.2,
-                                                                                random_state=42, stratify=labels)
+                                                                                random_state=.42, stratify=labels)
         statistics(Images_Train, Labels_Train)
         Labels_Train = to_categorical(Labels_Train, num_classes=2)
         Labels_Test = to_categorical(Labels_Test, num_classes=2)
